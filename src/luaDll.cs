@@ -57,7 +57,7 @@ namespace Lua
             if(Environment.Is64BitProcess)
                subfolder = "x64";
             else
-               subfolder = "x86";
+               subfolder = "x32";
 
             string filename = Path.Combine(executingAssemblyFolder, subfolder, dllName);
 
