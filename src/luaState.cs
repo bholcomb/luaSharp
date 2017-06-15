@@ -19,7 +19,6 @@ namespace Lua
             myGlobalTable = new LuaObject(this, -1);
 
             myPrintFuction = new LuaCSFunction(print);
-            myGenGuidFunction = new LuaCSFunction(genGuid);
 
             LuaDLL.lua_pushcclosure(myStatePtr, myPrintFuction, 0);
             LuaDLL.lua_setglobal(myStatePtr, "print");
