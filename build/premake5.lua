@@ -27,15 +27,15 @@ project "lua5.3"
 	kind "SharedLib"
 	language "C"
 	location "luadll"
-	files{"../lua5.3.4/src/*.h", "../lua5.3.4/src/*.c"}
-	excludes {"../lua5.3.4/src/luac.c", "../lua5.3.4/src/lua.c"}
+	files{"../lua-5.3.5/src/*.h", "../lua-5.3.5/src/*.c"}
+	excludes {"../lua-5.3.5/src/luac.c", "../lua-5.3.5/src/lua.c"}
 	systemversion("10.0.15063.0")
 	
 project "luac"
 	kind "ConsoleApp"
 	language "C"
 	location "luac"
-	files{"../lua5.3.4/src/luac.c", "../lua5.3.4/src/lopcodes.c", "../lua5.3.4/src/lopcodes.h","../lua5.3.4/src/ldump.c"}
+	files{"../lua-5.3.5/src/luac.c", "../lua-5.3.5/src/lopcodes.c", "../lua-5.3.5/src/lopcodes.h","../lua-5.3.5/src/ldump.c"}
 	links {"lua5.3"}
 	systemversion("10.0.15063.0")
  
@@ -43,7 +43,7 @@ project "lua"
 	kind "ConsoleApp"
 	language "C"
 	location "lua-exe"
-	files{"../lua5.3.4/src/lua.c"}
+	files{"../lua-5.3.5/src/lua.c"}
 	links{"lua5.3"}
 	systemversion("10.0.15063.0")
  
