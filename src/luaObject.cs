@@ -1,21 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
-#if OPENTK
 using OpenTK;
 using OpenTK.Graphics;
-#endif 
 
 namespace Lua
 {
-   public class LuaObject : IDisposable, IEnumerable<LuaObject>
+   public class LuaObject : LuaValue, IDisposable, IEnumerable<LuaObject>
    {
-      bool disposed = false;
+      protected bool disposed = false;
+      protected int myReference;
+      protected LuaState myState;
 
-      LuaTypes myType = LuaTypes.NIL;
-      int myReference;
-      LuaState myState;
       static LuaCSFunction theErrorFunction;
 
       static LuaObject()
@@ -24,10 +20,28 @@ namespace Lua
       }
 
       public LuaObject(LuaState state, int index)
+         :base()
       {
          myState=state;
          myReference = myState.getReference(index);
-         myType = myState.getType(index);
+         switch (myState.getType(index))
+         {
+            case LuaTypes.NIL: myType = DataType.NIL; break;
+            case LuaTypes.BOOLEAN: myType = DataType.BOOL; break;
+            case LuaTypes.NUMBER: myType = DataType.DOUBLE; break;
+            case LuaTypes.STRING: myType = DataType.STRING; break;
+            case LuaTypes.USERDATA: myType = DataType.POINTER; break;
+            case LuaTypes.TABLE: myType = DataType.TABLE; break;
+            case LuaTypes.FUNCTION: myType = DataType.FUNCTION; break;
+         }
+
+      }
+
+      public LuaObject(LuaObject obj)
+      {
+         myState = obj.myState;
+         myReference = obj.myReference;
+         myType = obj.myType;
       }
 
       public LuaState state { get { return myState; } }
@@ -40,7 +54,7 @@ namespace Lua
       #region indexing
       public bool contains(String name)
       {
-         if (myType != LuaTypes.TABLE)
+         if (myType != DataType.TABLE)
          {
             return false;
          }
@@ -97,7 +111,7 @@ namespace Lua
 
       public bool contains(int index)
       {
-         if (myType != LuaTypes.TABLE)
+         if (myType != DataType.TABLE)
          {
             return false;
          }
@@ -113,7 +127,7 @@ namespace Lua
  
       public T get<T>(int index)
       {
-         if (myType != LuaTypes.TABLE)
+         if (myType != DataType.TABLE)
          {
             return (T)Convert.ChangeType(0, typeof(T));
          }
@@ -131,7 +145,7 @@ namespace Lua
 
       public void set<T>(T value, int index)
       {
-         if (myType != LuaTypes.TABLE)
+         if (myType != DataType.TABLE)
          {
             Console.WriteLine("Cannot set field on non-table LuaObject");
          }
@@ -145,9 +159,29 @@ namespace Lua
          }
       }
 
+      public T getOr<T>(String index, T def)
+      {
+         if(contains(index) == false)
+         {
+            return def;
+         }
+
+         return get<T>(index);
+      }
+
+      public T getOr<T>(int index, T def)
+      {
+         if (contains(index) == false)
+         {
+            return def;
+         }
+
+         return get<T>(index);
+      }
+
       public T get<T>(String index)
       {
-         if (myType != LuaTypes.TABLE)
+         if (myType != DataType.TABLE)
          {
             return (T)Convert.ChangeType(0, typeof(T));
          }
@@ -201,7 +235,7 @@ namespace Lua
 
       public void set<T>(T value, String index)
       {
-         if (myType != LuaTypes.TABLE)
+         if (myType != DataType.TABLE)
          {
             Console.WriteLine("Cannot set field on non-table LuaObject");
          }
@@ -220,7 +254,7 @@ namespace Lua
       {
          get
          {
-            if (myType != LuaTypes.TABLE)
+            if (myType != DataType.TABLE)
             {
                return null;
             }
@@ -241,7 +275,7 @@ namespace Lua
       {
          get
          {
-            if (myType != LuaTypes.TABLE)
+            if (myType != DataType.TABLE)
             {
                return null;
             }
@@ -292,10 +326,6 @@ namespace Lua
                return temp;
             }
          }
-         set
-         {
-            throw new Exception("Set not implemented");
-         }
       }
 
       bool stackValueOk()
@@ -322,9 +352,9 @@ namespace Lua
          return 0;
       }
 
-      public LuaObject call(params LuaObject[] parameters)
+      public LuaObject call(params LuaValue[] parameters)
       {
-         if (myType != LuaTypes.FUNCTION)
+         if (myType != DataType.FUNCTION)
          {
             return null;
          }
@@ -337,7 +367,15 @@ namespace Lua
 
             for(int i=0; i<parameters.Length; i++)
             {
-               parameters[i].push();            
+               switch(parameters[i].type())
+               {
+                  case DataType.NIL: LuaDLL.lua_pushnil(myState.statePtr); break;
+                  case DataType.BOOL: LuaDLL.lua_pushboolean(myState.statePtr, (int)parameters[i]); break;
+                  case DataType.INT: LuaDLL.lua_pushnumber(myState.statePtr, (double)parameters[i]); break;
+                  case DataType.FLOAT: LuaDLL.lua_pushnumber(myState.statePtr, (double)parameters[i]); break;
+                  case DataType.DOUBLE: LuaDLL.lua_pushnumber(myState.statePtr, (double)parameters[i]); break;
+                  case DataType.STRING: LuaDLL.lua_pushstring(myState.statePtr, (string)parameters[i]); break;
+               }          
             }
 
             int error=LuaDLL.lua_pcall(myState.statePtr, parameters.Length, LuaDLL.LUA_MULTRET, errorIndex);
@@ -411,11 +449,10 @@ namespace Lua
          }
       }
 
-#if OPENTK
       public static implicit operator Vector3(LuaObject j)
       {
          Vector3 v = Vector3.Zero;
-         if (j.myType == LuaTypes.TABLE)
+         if (j.myType == DataType.TABLE)
          {
             v.X = (float)j["x"];
             v.Y = (float)j["y"];
@@ -428,7 +465,7 @@ namespace Lua
       public static implicit operator Color4(LuaObject j)
       {
          Color4 v = Color4.White;
-         if (j.myType == LuaTypes.TABLE)
+         if (j.myType == DataType.TABLE)
          {
             v.R = (float)j["r"];
             v.G = (float)j["g"];
@@ -441,7 +478,6 @@ namespace Lua
 
          return v;
       }
-#endif
 
       #endregion
 

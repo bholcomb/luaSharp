@@ -1,362 +1,399 @@
 using System;
 using System.Runtime.InteropServices;
-
+using System.Collections.Generic;
 
 namespace Lua
 {
-    public class LuaState
-    {
-        LuaCSFunction myPrintFuction;
-        IntPtr myStatePtr;
-        LuaObject myGlobalTable;
+   public abstract class BaseLuaDecoder
+   {
+      public BaseLuaDecoder() { }
+      public abstract Object get(LuaState state, int index);
+   }
 
-        public LuaState()
-        {
-            myStatePtr = LuaDLL.luaL_newstate();
-            LuaDLL.luaL_openlibs(myStatePtr);
+   public abstract class BaseLuaEncoder
+   {
+      public BaseLuaEncoder() { }
+      public abstract void push(LuaState state, Object o);
+   }
 
-            LuaDLL.lua_getglobal(myStatePtr, "_G");
-            myGlobalTable = new LuaObject(this, -1);
+   public class LuaState
+   {
+      LuaCSFunction myPrintFuction;
+      IntPtr myStatePtr;
+      LuaObject myGlobalTable;
 
-            myPrintFuction = new LuaCSFunction(print);
+      public Dictionary<Type, BaseLuaDecoder> myDecoders = new Dictionary<Type, BaseLuaDecoder>();
+      public Dictionary<Type, BaseLuaEncoder> myEncoders = new Dictionary<Type, BaseLuaEncoder>();
 
-            LuaDLL.lua_pushcclosure(myStatePtr, myPrintFuction, 0);
-            LuaDLL.lua_setglobal(myStatePtr, "print");
+      public LuaState()
+      {
+         myStatePtr = LuaDLL.luaL_newstate();
+         LuaDLL.luaL_openlibs(myStatePtr);
 
-            printCallback = new PrintCallback(defaultPrint);
-        }
+         LuaDLL.lua_getglobal(myStatePtr, "_G");
+         myGlobalTable = new LuaObject(this, -1);
 
-        public IntPtr statePtr { get { return myStatePtr; } }
-        public delegate void PrintCallback(String s);
-        public PrintCallback printCallback { get; set; }
+         myPrintFuction = new LuaCSFunction(print);
 
-        void defaultPrint(String s)
-        {
-            Console.Write(s);
-        }
+         LuaDLL.lua_pushcclosure(myStatePtr, myPrintFuction, 0);
+         LuaDLL.lua_setglobal(myStatePtr, "print");
 
-        int print(IntPtr state)
-        {
-            int n = LuaDLL.lua_gettop(state); //number of arguments
-            LuaDLL.lua_getglobal(state, "tostring");
-            for (int i = 1; i <= n; i++)
+         printCallback = new PrintCallback(defaultPrint);
+
+         initEncoders();
+         initDecoders();
+      }
+
+      public IntPtr statePtr { get { return myStatePtr; } }
+      public delegate void PrintCallback(String s);
+      public PrintCallback printCallback { get; set; }
+
+      void defaultPrint(String s)
+      {
+         Console.Write(s);
+      }
+
+      int print(IntPtr state)
+      {
+         int n = LuaDLL.lua_gettop(state); //number of arguments
+         LuaDLL.lua_getglobal(state, "tostring");
+         for (int i = 1; i <= n; i++)
+         {
+            String s;
+            LuaDLL.lua_pushvalue(state, -1); //function to be called
+            LuaDLL.lua_pushvalue(state, i); //value to print
+            LuaDLL.lua_call(state, 1, 1);
+            s = getValue<String>(-1);
+            if (s == null)
             {
-                String s;
-                LuaDLL.lua_pushvalue(state, -1); //function to be called
-                LuaDLL.lua_pushvalue(state, i); //value to print
-                LuaDLL.lua_call(state, 1, 1);
-                s = getValue<String>(-1);
-                if (s == null)
-                {
-                    return LuaDLL.luaL_error(state, "\"tostring\" must return a string to \"print\"");
-                }
-                if (i > 1)
-                {
-                    printCallback("\t");
-                }
+               return LuaDLL.luaL_error(state, "\"tostring\" must return a string to \"print\"");
+            }
+            if (i > 1)
+            {
+               printCallback("\t");
+            }
 
-                printCallback(s);
-                LuaDLL.lua_pop(state, 1);
+            printCallback(s);
+            LuaDLL.lua_pop(state, 1);
+         }
+
+         printCallback("\n");
+         return 0;
+      }
+
+      public void doString(String s)
+      {
+         LuaDLL.luaL_dostring(myStatePtr, s);
+      }
+
+      public LuaObject this[string index]
+      {
+         get { return myGlobalTable[index]; }
+      }
+
+      public LuaObject this[int index]
+      {
+         get { return myGlobalTable[index]; }
+      }
+
+      public LuaObject global { get { return myGlobalTable; } }
+
+      public bool doFile(String s)
+      {
+         int ret = LuaDLL.luaL_dofile(myStatePtr, s);
+         if (ret != 0)
+         {
+            printCallback(getValue<string>(-1));
+         }
+
+         return ret == 0;
+      }
+
+      public LuaObject findObject(String name)
+      {
+         using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(this))
+         {
+            return myGlobalTable[name];
+         }
+      }
+
+      public LuaObject createTable()
+      {
+         using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(this))
+         {
+            LuaDLL.lua_createtable(myStatePtr, 0/*narr*/, 0/*nrec*/);
+            return new LuaObject(this, -1);
+         }
+      }
+
+      public LuaTypes getType(int index)
+      {
+         return (LuaTypes)LuaDLL.lua_type(myStatePtr, index);
+      }
+
+      public T getValue<T>(int index)
+      {
+         BaseLuaDecoder getter = null;
+         if (myDecoders.TryGetValue(typeof(T), out getter) == true)
+         {
+            return (T)getter.get(this, index);
+         }
+
+         throw new Exception("Can't get this type");
+      }
+
+      public void pushValue<T>(T value)
+      {
+         BaseLuaEncoder setter = null;
+         if (myEncoders.TryGetValue(typeof(T), out setter) == true)
+         {
+            setter.push(this, value);
+         }
+
+         throw new Exception("Can't push this type on");
+      }
+
+      public int getReference(int index)
+      {
+         LuaDLL.lua_pushvalue(myStatePtr, index);
+         return LuaDLL.luaL_ref(myStatePtr, (int)Lua.LuaStackConstants.LUA_REGISTRYINDEX);
+      }
+
+      public void unreference(int reference)
+      {
+         LuaDLL.luaL_unref(myStatePtr, (int)Lua.LuaStackConstants.LUA_REGISTRYINDEX, reference);
+      }
+
+      public void pushReference(int reference)
+      {
+         LuaDLL.lua_rawgeti(myStatePtr, (int)Lua.LuaStackConstants.LUA_REGISTRYINDEX, reference);
+      }
+
+      public void clearStack()
+      {
+         LuaDLL.lua_settop(myStatePtr, 0);
+      }
+
+      public int getTop()
+      {
+         return LuaDLL.lua_gettop(myStatePtr);
+      }
+
+      public void setTop(int top)
+      {
+         LuaDLL.lua_settop(myStatePtr, top);
+      }
+
+      public void stackDump()
+      {
+         int stackTop = getTop();
+         printCallback("---------------Stack Dump---------------\n");
+         if (stackTop == 0)
+         {
+            printCallback("Empty Stack\n");
+            return;
+         }
+
+         for (int i = 1; i <= stackTop; i++)
+         {
+            int type = LuaDLL.lua_type(myStatePtr, i);
+            printCallback(String.Format("{0}: Type={1}---Value=", i, getType(i)));
+            printValue(i);
+            printCallback("\n");
+         }
+      }
+
+      public void printValue(int index)
+      {
+         LuaTypes type = getType(index);
+         switch (type)
+         {
+         case LuaTypes.NIL:
+            printCallback("NIL");
+            break;
+         case LuaTypes.BOOLEAN:
+            printCallback(getValue<string>(index));
+            break;
+         case LuaTypes.LIGHTUSERDATA:
+            printCallback(getValue<string>(index));
+            break;
+         case LuaTypes.NUMBER:
+            printCallback(getValue<string>(index));
+            break;
+         case LuaTypes.STRING:
+            printCallback(getValue<string>(index));
+            break;
+         case LuaTypes.TABLE:
+            printCallback(LuaDLL.lua_topointer(myStatePtr, index).ToString());
+            printCallback("\n");
+            printTable(index);
+            break;
+         case LuaTypes.FUNCTION:
+            printCallback(LuaDLL.lua_tocfunction(myStatePtr, index).ToString());
+            break;
+         case LuaTypes.USERDATA:
+            printCallback(LuaDLL.lua_touserdata(myStatePtr, index).ToString());
+            break;
+         case LuaTypes.THREAD:
+            printCallback("Thread: no usable value");
+            break;
+         default:
+         break;
+         }
+      }
+
+      public void printTable(int index)
+      {
+         if (LuaDLL.lua_istable(myStatePtr, index) == false)
+         {
+            printCallback(String.Format("LuaState.PrintTable()-Cannot print non-table at index {0}\n", index));
+            return;
+         }
+
+         LuaDLL.lua_pushnil(myStatePtr);
+         while (LuaDLL.lua_next(myStatePtr, index) != 0)
+         {
+            printCallback(String.Format("\t[{0}]=", getValue<string>(-2)));
+            switch (getType(-1))
+            {
+               case LuaTypes.NIL:
+                  printCallback("NIL");
+                  break;
+               case LuaTypes.BOOLEAN:
+                  printCallback(String.Format("Bool: {0}", getValue<string>(-1)));
+                  break;
+               case LuaTypes.LIGHTUSERDATA:
+                  printCallback(String.Format("Light userdata: {0}", getValue<string>(-1)));
+                  break;
+               case LuaTypes.NUMBER:
+                  printCallback(String.Format("Number: {0}", getValue<string>(-1)));
+                  break;
+               case LuaTypes.STRING:
+                  printCallback(String.Format("String: {0}", getValue<string>(-1)));
+                  break;
+               case LuaTypes.TABLE:
+                  printCallback(String.Format("Table: {0}", LuaDLL.lua_topointer(myStatePtr, -1).ToString()));
+                  break;
+               case LuaTypes.FUNCTION:
+                  printCallback(String.Format("Function: {0}", LuaDLL.lua_tocfunction(myStatePtr, -1).ToString()));
+                  break;
+               case LuaTypes.USERDATA:
+                  printCallback(String.Format("Userdata: {0}", LuaDLL.lua_touserdata(myStatePtr, -1).ToString()));
+                  break;
+               case LuaTypes.THREAD:
+                  printCallback("Thread: no usable value");
+                  break;
             }
 
             printCallback("\n");
-            return 0;
-        }
+            LuaDLL.lua_pop(myStatePtr, 1);
+         }
+      }
 
-        public int doString(String s)
-        {
-            return LuaDLL.luaL_dostring(myStatePtr, s);
-        }
+#region decoders
+      void initDecoders()
+      {
+         myDecoders[typeof(String)] = new StringDecoder();
+         myDecoders[typeof(UInt32)] = new NumberDecoder<UInt32>();
+         myDecoders[typeof(Int32)] = new NumberDecoder<Int32>();
+         myDecoders[typeof(UInt64)] = new NumberDecoder<UInt64>();
+         myDecoders[typeof(Int64)] = new NumberDecoder<Int64>();
+         myDecoders[typeof(float)] = new NumberDecoder<float>();
+         myDecoders[typeof(double)] = new NumberDecoder<double>();
+         myDecoders[typeof(bool)] = new BoolDecoder();
+         myDecoders[typeof(LuaObject)] = new LuaObjectDecoder();
+      }
 
-        public int doFile(String s)
-        {
-            return LuaDLL.luaL_dofile(myStatePtr, s);
-        }
+      class StringDecoder : BaseLuaDecoder
+      {
+         public override Object get(LuaState state, int index)
+         {
+            IntPtr strPtr = LuaDLL.lua_tostring(state.statePtr, index);
 
-        public LuaObject findObject(String name)
-        {
-            using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(this))
-            {
-                return myGlobalTable[name];
-            }
-        }
+            //allow for null strings
+            if (strPtr == IntPtr.Zero)
+               return "";
 
-        public LuaObject createTable()
-        {
-            using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(this))
-            {
-                LuaDLL.lua_createtable(myStatePtr, 0/*narr*/, 0/*nrec*/);
-                return new LuaObject(this, -1);
-            }
-        }
+            String str = Marshal.PtrToStringAnsi(strPtr);
+            return str;
+         }
+      }
 
-        public LuaTypes getType(int index)
-        {
-            return (LuaTypes)LuaDLL.lua_type(myStatePtr, index);
-        }
+      class NumberDecoder<T> : BaseLuaDecoder
+      {
+         public override Object get(LuaState state, int index)
+         {
+            double val = LuaDLL.lua_tonumber(state.statePtr, index);
+            return (T)Convert.ChangeType(val, typeof(T));
+         }
+      }
 
-        public T getValue<T>(int index)
-        {
-            if (typeof(T) == typeof(String))
-            {
-                IntPtr strPtr = LuaDLL.lua_tostring(statePtr, index);
+      class BoolDecoder : BaseLuaDecoder
+      {
+         public override Object get(LuaState state, int index)
+         {
+            return LuaDLL.lua_toboolean(state.statePtr, index) != 0;
+         }
+      }
 
-                //allow for null strings
-                if (strPtr == IntPtr.Zero)
-                    return (T)Convert.ChangeType(null, typeof(T));
+      class LuaObjectDecoder : BaseLuaDecoder
+      {
+         public override object get(LuaState state, int index)
+         {
+            LuaObject ret = new LuaObject(state, index);
+            return ret;
+         }
+      }
 
-                String str = Marshal.PtrToStringAnsi(strPtr);
-                return (T)Convert.ChangeType(str, typeof(T));
-            }
+#endregion
 
-            if (typeof(T) == typeof(bool))
-            {
-                return (T)Convert.ChangeType(LuaDLL.lua_toboolean(statePtr, index) == 0 ? false : true, typeof(T));
-            }
+#region encoders
+      void initEncoders()
+      {
+         myEncoders[typeof(String)] = new StringEncoder();
+         myEncoders[typeof(UInt32)] = new NumberEncoder<UInt32>();
+         myEncoders[typeof(Int32)] = new NumberEncoder<Int32>();
+         myEncoders[typeof(UInt64)] = new NumberEncoder<UInt64>();
+         myEncoders[typeof(Int64)] = new NumberEncoder<Int64>();
+         myEncoders[typeof(float)] = new NumberEncoder<float>();
+         myEncoders[typeof(double)] = new NumberEncoder<double>();
+         myEncoders[typeof(bool)] = new BoolEncoder();
+         myEncoders[typeof(LuaObject)] = new LuaObjectEncoder();
+      }
 
-            if (typeof(T) == typeof(float))
-            {
-                return (T)Convert.ChangeType(LuaDLL.lua_tonumber(statePtr, index), typeof(T));
-            }
+      class StringEncoder : BaseLuaEncoder
+      {
+         public override void push(LuaState state, object o)
+         {
+            LuaDLL.lua_pushstring(state.statePtr, (String)o);
+         }
+      }
 
-            if (typeof(T) == typeof(double))
-            {
-                return (T)Convert.ChangeType(LuaDLL.lua_tonumber(statePtr, index), typeof(T));
-            }
+      class NumberEncoder<T> : BaseLuaEncoder
+      {
+         public override void push(LuaState state, object o)
+         {
+            double d = (double)Convert.ChangeType(o, typeof(T));
+            LuaDLL.lua_pushnumber(state.statePtr, d);
+         }
+      }
 
-            if (typeof(T) == typeof(Int32))
-            {
-                return (T)Convert.ChangeType(LuaDLL.lua_tointeger(statePtr, index), typeof(T));
-            }
+      class BoolEncoder : BaseLuaEncoder
+      {
+         public override void push(LuaState state, object o)
+         {
+            int v = (bool)o == true ? 1 : 0;
+            LuaDLL.lua_pushboolean(state.statePtr, v);
+         }
+      }
 
-            if (typeof(T) == typeof(UInt32))
-            {
-                return (T)Convert.ChangeType(LuaDLL.lua_tointeger(statePtr, index), typeof(T));
-            }
-
-            if (typeof(T) == typeof(UInt64))
-            {
-                return (T)Convert.ChangeType(LuaDLL.lua_tointeger(statePtr, index), typeof(T));
-            }
-
-            if (typeof(T) == typeof(Int64))
-            {
-                return (T)Convert.ChangeType(LuaDLL.lua_tointeger(statePtr, index), typeof(T));
-            }
-
-            if (typeof(T) == typeof(LuaObject))
-            {
-                LuaObject temp = new LuaObject(this, index);
-                return (T)Convert.ChangeType(temp, typeof(T));
-            }
-
-            throw new Exception("Can't get this type");
-        }
-
-        public void pushValue<T>(T value)
-        {
-            if (typeof(T) == typeof(String))
-            {
-                LuaDLL.lua_pushstring(statePtr, (String)Convert.ChangeType(value, typeof(String)));
-                return;
-            }
-
-            if (typeof(T) == typeof(bool))
-            {
-                LuaDLL.lua_pushboolean(statePtr, (int)Convert.ChangeType(value, typeof(int)));
-                return;
-            }
-
-            if (typeof(T) == typeof(float))
-            {
-                LuaDLL.lua_pushnumber(statePtr, (float)Convert.ChangeType(value, typeof(float)));
-                return;
-            }
-
-            if (typeof(T) == typeof(double))
-            {
-                LuaDLL.lua_pushnumber(statePtr, (double)Convert.ChangeType(value, typeof(double)));
-                return;
-            }
-
-            if (typeof(T) == typeof(Int32))
-            {
-                LuaDLL.lua_pushnumber(statePtr, (Int32)Convert.ChangeType(value, typeof(Int32)));
-                return;
-            }
-
-            if (typeof(T) == typeof(UInt32))
-            {
-                LuaDLL.lua_pushnumber(statePtr, (UInt32)Convert.ChangeType(value, typeof(UInt32)));
-                return;
-            }
-
-            if (typeof(T) == typeof(UInt64))
-            {
-                LuaDLL.lua_pushnumber(statePtr, (UInt64)Convert.ChangeType(value, typeof(UInt64)));
-                return;
-            }
-
-            if (typeof(T) == typeof(Int64))
-            {
-                LuaDLL.lua_pushnumber(statePtr, (Int64)Convert.ChangeType(value, typeof(Int64)));
-                return;
-            }
-
-            if (typeof(T) == typeof(LuaObject))
-            {
-                (value as LuaObject).push();
-                return;
-            }
-
-            throw new Exception("Can't push this type on");
-        }
-
-        public int getReference(int index)
-        {
-            LuaDLL.lua_pushvalue(myStatePtr, index);
-            return LuaDLL.luaL_ref(myStatePtr, (int)Lua.LuaStackConstants.LUA_REGISTRYINDEX);
-        }
-
-        public void unreference(int reference)
-        {
-            LuaDLL.luaL_unref(myStatePtr, (int)Lua.LuaStackConstants.LUA_REGISTRYINDEX, reference);
-        }
-
-        public void pushReference(int reference)
-        {
-            LuaDLL.lua_rawgeti(myStatePtr, (int)Lua.LuaStackConstants.LUA_REGISTRYINDEX, reference);
-        }
-
-        public void clearStack()
-        {
-            LuaDLL.lua_settop(myStatePtr, 0);
-        }
-
-        public int getTop()
-        {
-            return LuaDLL.lua_gettop(myStatePtr);
-        }
-
-        public void setTop(int top)
-        {
-            LuaDLL.lua_settop(myStatePtr, top);
-        }
-
-        public void stackDump()
-        {
-            int stackTop = getTop();
-            printCallback("---------------Stack Dump---------------\n");
-            if (stackTop == 0)
-            {
-                printCallback("Empty Stack\n");
-                return;
-            }
-
-            for (int i = 1; i <= stackTop; i++)
-            {
-                int type = LuaDLL.lua_type(myStatePtr, i);
-                printCallback(String.Format("{0}: Type={1}---Value=", i, getType(i)));
-                printValue(i);
-                printCallback("\n");
-            }
-        }
-
-        public void printValue(int index)
-        {
-            LuaTypes type = getType(index);
-            switch (type)
-            {
-                case LuaTypes.NIL:
-                    printCallback("NIL");
-                    break;
-                case LuaTypes.BOOLEAN:
-                    printCallback(getValue<string>(index));
-                    break;
-                case LuaTypes.LIGHTUSERDATA:
-                    printCallback(getValue<string>(index));
-                    break;
-                case LuaTypes.NUMBER:
-                    printCallback(getValue<string>(index));
-                    break;
-                case LuaTypes.STRING:
-                    printCallback(getValue<string>(index));
-                    break;
-                case LuaTypes.TABLE:
-                    printCallback(LuaDLL.lua_topointer(myStatePtr, index).ToString());
-                    printCallback("\n");
-                    printTable(index);
-                    break;
-                case LuaTypes.FUNCTION:
-                    printCallback(LuaDLL.lua_tocfunction(myStatePtr, index).ToString());
-                    break;
-                case LuaTypes.USERDATA:
-                    printCallback(LuaDLL.lua_touserdata(myStatePtr, index).ToString());
-                    break;
-                case LuaTypes.THREAD:
-                    printCallback("Thread: no usable value");
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        public void printTable(int index)
-        {
-            if (LuaDLL.lua_istable(myStatePtr, index) == false)
-            {
-                printCallback(String.Format("LuaState.PrintTable()-Cannot print non-table at index {0}\n", index));
-                return;
-            }
-
-            LuaDLL.lua_pushnil(myStatePtr);
-            while (LuaDLL.lua_next(myStatePtr, index) != 0)
-            {
-                printCallback(String.Format("\t[{0}]=", getValue<string>(-2)));
-                switch (getType(-1))
-                {
-                    case LuaTypes.NIL:
-                        printCallback("NIL");
-                        break;
-                    case LuaTypes.BOOLEAN:
-                        printCallback(String.Format("Bool: {0}", getValue<string>(-1)));
-                        break;
-                    case LuaTypes.LIGHTUSERDATA:
-                        printCallback(String.Format("Light userdata: {0}", getValue<string>(-1)));
-                        break;
-                    case LuaTypes.NUMBER:
-                        printCallback(String.Format("Number: {0}", getValue<string>(-1)));
-                        break;
-                    case LuaTypes.STRING:
-                        printCallback(String.Format("String: {0}", getValue<string>(-1)));
-                        break;
-                    case LuaTypes.TABLE:
-                        printCallback(String.Format("Table: {0}", LuaDLL.lua_topointer(myStatePtr, -1).ToString()));
-                        break;
-                    case LuaTypes.FUNCTION:
-                        printCallback(String.Format("Function: {0}", LuaDLL.lua_tocfunction(myStatePtr, -1).ToString()));
-                        break;
-                    case LuaTypes.USERDATA:
-                        printCallback(String.Format("Userdata: {0}", LuaDLL.lua_touserdata(myStatePtr, -1).ToString()));
-                        break;
-                    case LuaTypes.THREAD:
-                        printCallback("Thread: no usable value");
-                        break;
-                }
-
-                printCallback("\n");
-                LuaDLL.lua_pop(myStatePtr, 1);
-            }
-        }
-
-        public void close()
-        {
-            LuaDLL.lua_close(myStatePtr);
-        }
-
-        public void error()
-        {
-            LuaDLL.lua_error(myStatePtr);
-        }
-    }
+      class LuaObjectEncoder : BaseLuaEncoder
+      {
+         public override void push(LuaState state, object o)
+         {
+            (o as LuaObject).push();
+         }
+      }
+      #endregion
+   }
 }

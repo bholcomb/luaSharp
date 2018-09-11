@@ -49,7 +49,7 @@ namespace Lua
       {
          if(myDllPtr == IntPtr.Zero)
          {
-            // Retrieve the folder of the OculusWrap.dll.
+            // Retrieve the folder of the application
             string executingAssemblyFolder = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
             string subfolder;
