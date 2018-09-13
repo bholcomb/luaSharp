@@ -91,7 +91,7 @@ namespace LuaExt
             float[] v = new float[16];
             for (int i=0; i<16; i++)
             {
-               v[i] = (float)temp[i];
+               v[i] = (float)temp[i + 1];
             }
             temp.Dispose();
             return new Matrix4(
