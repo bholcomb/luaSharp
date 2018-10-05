@@ -149,8 +149,10 @@ namespace Lua
          {
             setter.push(this, value);
          }
-
-         throw new Exception("Can't push this type on");
+         else
+         {
+            throw new Exception("Can't push this type on");
+         }
       }
 
       public int getReference(int index)
@@ -373,7 +375,7 @@ namespace Lua
       {
          public override void push(LuaState state, object o)
          {
-            double d = (double)Convert.ChangeType(o, typeof(T));
+            double d = (double)Convert.ChangeType(o, typeof(double));
             LuaDLL.lua_pushnumber(state.statePtr, d);
          }
       }

@@ -129,7 +129,7 @@ namespace Lua
       {
          if (myType != DataType.TABLE)
          {
-            return (T)Convert.ChangeType(0, typeof(T));
+            throw new Exception("Cannot set field on non-table");
          }
 
          using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(myState))
@@ -147,7 +147,7 @@ namespace Lua
       {
          if (myType != DataType.TABLE)
          {
-            Console.WriteLine("Cannot set field on non-table LuaObject");
+            throw new Exception("Cannot set field on non-table");
          }
 
          using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(myState))
@@ -183,7 +183,7 @@ namespace Lua
       {
          if (myType != DataType.TABLE)
          {
-            return (T)Convert.ChangeType(0, typeof(T));
+            throw new Exception("Cannot get field on non-table");
          }
 
          using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(myState))
@@ -194,8 +194,9 @@ namespace Lua
             {
                if (s.Contains("[") == true)
                {
+                  int arrayLocBegin = s.IndexOf("[");
                   int arrayLocEnd = s.IndexOf("]");
-                  String tableName = s.Substring(0, s.IndexOf("]"));
+                  String tableName = s.Substring(0, arrayLocBegin);
                   LuaDLL.lua_pushstring(myState.statePtr, tableName);
                   LuaDLL.lua_gettable(myState.statePtr, -2);
 
@@ -204,7 +205,7 @@ namespace Lua
                      return (T)Convert.ChangeType(null, typeof(T));
                   }
 
-                  string indexName = s.Substring(s.IndexOf("["), s.IndexOf("]"));
+                  string indexName = s.Substring(arrayLocBegin + 1, arrayLocEnd - arrayLocBegin - 1);
                   int n;
                   bool isNumeric = int.TryParse(indexName, out n);
                   if (isNumeric == true)
@@ -218,7 +219,9 @@ namespace Lua
 
                   LuaDLL.lua_gettable(myState.statePtr, -2);
                   if (stackValueOk() == false)
+                  {
                      return (T)Convert.ChangeType(null, typeof(T));
+                  }
                }
                else
                {
@@ -237,14 +240,13 @@ namespace Lua
       {
          if (myType != DataType.TABLE)
          {
-            Console.WriteLine("Cannot set field on non-table LuaObject");
+            throw new Exception("Cannot set field on non-table");
          }
 
          using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(myState))
          {
             push();
-            String s = (String)Convert.ChangeType(value, typeof(String));
-            LuaDLL.lua_pushstring(myState.statePtr, s);
+            LuaDLL.lua_pushstring(myState.statePtr, index);
             myState.pushValue<T>(value);
             LuaDLL.lua_settable(myState.statePtr, -3);
          }
@@ -254,20 +256,11 @@ namespace Lua
       {
          get
          {
-            if (myType != DataType.TABLE)
-            {
-               return null;
-            }
-
-            using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(myState))
-            {
-               push();
-               LuaDLL.lua_pushnumber(myState.statePtr, index);
-               LuaDLL.lua_gettable(myState.statePtr, -2);
-               LuaObject temp = new LuaObject(myState, -1);
-               LuaDLL.lua_pop(myState.statePtr, 2);
-               return temp;
-            }
+            return get<LuaObject>(index);
+         }
+         set
+         {
+            set(value, index);
          }
       }
 
@@ -275,56 +268,11 @@ namespace Lua
       {
          get
          {
-            if (myType != DataType.TABLE)
-            {
-               return null;
-            }
-
-            using (LuaAutoStackCleaner cleaner = new LuaAutoStackCleaner(myState))
-            {
-               push();
-               String[] pieces = index.Split('.');
-               foreach (String s in pieces)
-               {
-                  if (s.Contains("[") == true)
-                  {
-                     int arrayLocEnd = s.IndexOf("]");
-                     String tableName = s.Substring(0, s.IndexOf("]"));
-                     LuaDLL.lua_pushstring(myState.statePtr, tableName);
-                     LuaDLL.lua_gettable(myState.statePtr, -2);
-
-                     if (LuaDLL.lua_isnil(myState.statePtr, -1)==true)
-                     {
-                        return null;
-                     }
-
-                     string indexName = s.Substring(s.IndexOf("["), s.IndexOf("]"));
-                     int n;
-                     bool isNumeric = int.TryParse(indexName, out n);
-                     if (isNumeric == true)
-                     {
-                        LuaDLL.lua_pushnumber(myState.statePtr, n);
-                     }
-                     else
-                     {
-                        LuaDLL.lua_pushstring(myState.statePtr, indexName);
-                     }
-
-                     LuaDLL.lua_gettable(myState.statePtr, -2);
-                     if (stackValueOk() == false)
-                        return null;
-
-                  }
-                  else
-                  {
-                     LuaDLL.lua_pushstring(myState.statePtr, s);
-                     LuaDLL.lua_gettable(myState.statePtr, -2);
-                  }
-               }
-
-               LuaObject temp = new LuaObject(myState, -1);
-               return temp;
-            }
+            return get<LuaObject>(index);
+         }
+         set
+         {
+            set(value, index);
          }
       }
 
@@ -375,6 +323,7 @@ namespace Lua
                   case DataType.FLOAT: LuaDLL.lua_pushnumber(myState.statePtr, (double)parameters[i]); break;
                   case DataType.DOUBLE: LuaDLL.lua_pushnumber(myState.statePtr, (double)parameters[i]); break;
                   case DataType.STRING: LuaDLL.lua_pushstring(myState.statePtr, (string)parameters[i]); break;
+                  case DataType.TABLE: LuaObject obj = (LuaObject)parameters[i]; obj.push(); break;
                }          
             }
 
