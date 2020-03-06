@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using OpenTK;
-using OpenTK.Graphics;
+// using OpenTK;
+// using OpenTK.Graphics;
 
 namespace Lua
 {
@@ -398,35 +398,35 @@ namespace Lua
          }
       }
 
-      public static implicit operator Vector3(LuaObject j)
-      {
-         Vector3 v = Vector3.Zero;
-         if (j.myType == DataType.TABLE)
-         {
-            v.X = (float)j["x"];
-            v.Y = (float)j["y"];
-            v.Z = (float)j["z"];
-         }
-
-         return v;
-      }
-
-      public static implicit operator Color4(LuaObject j)
-      {
-         Color4 v = Color4.White;
-         if (j.myType == DataType.TABLE)
-         {
-            v.R = (float)j["r"];
-            v.G = (float)j["g"];
-            v.B = (float)j["b"];
-            if (j.contains("a"))
-               v.A = (float)j["a"];
-            else
-               v.A = 1.0f;
-         }
-
-         return v;
-      }
+//       public static implicit operator Vector3(LuaObject j)
+//       {
+//          Vector3 v = Vector3.Zero;
+//          if (j.myType == DataType.TABLE)
+//          {
+//             v.X = (float)j["x"];
+//             v.Y = (float)j["y"];
+//             v.Z = (float)j["z"];
+//          }
+// 
+//          return v;
+//       }
+// 
+//       public static implicit operator Color4(LuaObject j)
+//       {
+//          Color4 v = Color4.White;
+//          if (j.myType == DataType.TABLE)
+//          {
+//             v.R = (float)j["r"];
+//             v.G = (float)j["g"];
+//             v.B = (float)j["b"];
+//             if (j.contains("a"))
+//                v.A = (float)j["a"];
+//             else
+//                v.A = 1.0f;
+//          }
+// 
+//          return v;
+//       }
 
       #endregion
 

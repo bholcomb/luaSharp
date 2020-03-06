@@ -44,6 +44,11 @@ namespace Lua
          initDecoders();
       }
 
+      public void close()
+      {
+         LuaDLL.lua_close(myStatePtr);
+      }
+
       public IntPtr statePtr { get { return myStatePtr; } }
       public delegate void PrintCallback(String s);
       public PrintCallback printCallback { get; set; }
@@ -81,9 +86,9 @@ namespace Lua
          return 0;
       }
 
-      public void doString(String s)
+      public int doString(String s)
       {
-         LuaDLL.luaL_dostring(myStatePtr, s);
+         return LuaDLL.luaL_dostring(myStatePtr, s);
       }
 
       public LuaObject this[string index]

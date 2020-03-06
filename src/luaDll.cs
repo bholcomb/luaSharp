@@ -212,7 +212,7 @@ namespace Lua
 
    public static class LuaDLL
    {
-      private const string LUA_DLL = "lua5.3.dll";
+      private const string LUA_DLL = "lua5.4.dll";
       public const int LUA_MULTRET = -1;
 
       static DllLoader theLuaDll;

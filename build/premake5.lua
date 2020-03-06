@@ -23,29 +23,48 @@ solution "Lua"
    debugdir "../bin/x64"
 
    
-project "lua5.3"
+project "lua5.4"
 	kind "SharedLib"
 	language "C"
 	location "luadll"
-	files{"../lua-5.3.5/src/*.h", "../lua-5.3.5/src/*.c"}
-	excludes {"../lua-5.3.5/src/luac.c", "../lua-5.3.5/src/lua.c"}
-	systemversion("10.0.15063.0")
+	files{"../lua-5.4.0/src/*.h", "../lua-5.4.0/src/*.c"}
+	excludes {"../lua-5.4.0/src/luac.c", "../lua-5.4.0/src/lua.c"}
 	
 project "luac"
 	kind "ConsoleApp"
 	language "C"
 	location "luac"
-	files{"../lua-5.3.5/src/luac.c", "../lua-5.3.5/src/lopcodes.c", "../lua-5.3.5/src/lopcodes.h","../lua-5.3.5/src/ldump.c"}
-	links {"lua5.3"}
-	systemversion("10.0.15063.0")
+	files{
+   "../lua-5.4.0/src/luac.c", 
+   "../lua-5.4.0/src/lopcodes.c",
+   "../lua-5.4.0/src/lopcodes.h",
+   "../lua-5.4.0/src/ldump.c",
+   "../lua-5.4.0/src/ldebug.c",
+   "../lua-5.4.0/src/lobject.c",
+   "../lua-5.4.0/src/lvm.c",
+   "../lua-5.4.0/src/ltm.c",
+   "../lua-5.4.0/src/ldo.c",
+   "../lua-5.4.0/src/lstate.c",
+   "../lua-5.4.0/src/ltable.c",
+   "../lua-5.4.0/src/lmem.c",
+   "../lua-5.4.0/src/lgc.c",
+   "../lua-5.4.0/src/lfunc.c",
+   "../lua-5.4.0/src/lzio.c",
+   "../lua-5.4.0/src/lparser.c",
+   "../lua-5.4.0/src/lundump.c",
+   "../lua-5.4.0/src/llex.c",
+   "../lua-5.4.0/src/lcode.c",
+   "../lua-5.4.0/src/lctype.c",
+   "../lua-5.4.0/src/lstring.c"}
+   
+	links {"lua5.4"}
  
 project "lua"
 	kind "ConsoleApp"
 	language "C"
 	location "lua-exe"
-	files{"../lua-5.3.5/src/lua.c"}
-	links{"lua5.3"}
-	systemversion("10.0.15063.0")
+	files{"../lua-5.4.0/src/lua.c"}
+	links{"lua5.4"}
  
 project "Lua#"
 	kind "SharedLib"
