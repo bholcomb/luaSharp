@@ -21,8 +21,7 @@
         <file src="LICENSE.txt"/>
         <file src="src/bin/Release/net7.0/LuaSharp.dll" target="lib/net7.0" />
         <file src="src/bin/Release/net7.0/LuaSharp.deps.json" target="lib/net7.0" />
-        <file src="bin/x64/liblua5.4.so" target="runtimes/linux-x64/native/liblua5.4.so" />
-        <file src="bin/x64/lua" target="runtimes/linux-x64/native/lua" />
-        <file src="bin/x64/luac" target="runtimes/linux-x64/native/luac" />
+        <file src="bin/linux-x64/**/*" target="runtimes/linux-x64" />
+        <file src="bin/win-x64/**/*" target="runtimes/win-x64" />
     </files>
 </package>

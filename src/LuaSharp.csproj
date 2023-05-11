@@ -8,17 +8,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Content Include="../bin/x64/liblua5.4.so">
+        <Content Include="../bin/linux-x64/**/*">
             <Pack>true</Pack>
-            <PackagePath>runtimes/linux-x64/native/</PackagePath>
+            <PackagePath>runtimes/linux-x64</PackagePath>
         </Content>
-         <Content Include="../bin/x64/lua">
+         <Content Include="../bin/win-x64/**/*">
             <Pack>true</Pack>
-            <PackagePath>runtimes/linux-x64/native/</PackagePath>
-        </Content>
-         <Content Include="../bin/x64/luac">
-            <Pack>true</Pack>
-            <PackagePath>runtimes/linux-x64/native/</PackagePath>
+            <PackagePath>runtimes/win-x64</PackagePath>
         </Content>
     </ItemGroup>
 
