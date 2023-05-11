@@ -1,10 +1,11 @@
 solution "Lua"
    location("../")
    configurations { "Debug", "Release" }
-   platforms{"x32", "x64"}
+   platforms{"x64"}
    startproject "lua"
    
-   defines{"LUA_BUILD_AS_DLL"}
+   filter {"system:Windows"}
+      defines{"LUA_BUILD_AS_DLL"}
    
   configuration { "Debug" }
     defines { "DEBUG", "TRACE"}
@@ -14,10 +15,6 @@ solution "Lua"
   configuration { "Release" }
     optimize "Speed"
 	
-  configuration {"x32"}
-   targetdir "../bin/x32"
-   debugdir "../bin/x32"
-
   configuration {"x64"}
    targetdir "../bin/x64"
    debugdir "../bin/x64"
@@ -29,6 +26,8 @@ project "lua5.4"
 	location "luadll"
 	files{"../lua-5.4.4/src/*.h", "../lua-5.4.4/src/*.c"}
 	excludes {"../lua-5.4.4/src/luac.c", "../lua-5.4.4/src/lua.c"}
+  filter{"system:Linux"}
+    links {"m"}
 	
 project "luac"
 	kind "ConsoleApp"
@@ -57,6 +56,8 @@ project "luac"
    "../lua-5.4.4/src/lctype.c",
    "../lua-5.4.4/src/lstring.c"}
    links {"lua5.4"}
+   filter{"system:Linux"}
+      links {"m"}
  
 project "lua"
 	kind "ConsoleApp"
@@ -64,15 +65,17 @@ project "lua"
 	location "lua-exe"
 	files{"../lua-5.4.4/src/lua.c"}
 	links{"lua5.4"}
+  filter{"system:Linux"}
+    links {"m"}
  
-project "Lua#"
+project "LuaSharp"
 	kind "SharedLib"
 	language "C#"
-	location "Lua#"
+	location "LuaSharp"
 	files{"../src/*.cs"}
 	targetdir "../bin"
 	links("System")
-	namespace("Lua")
+	namespace("LuaSharp")
    
 project "Test Lua"
 	language  "C#"
@@ -81,5 +84,5 @@ project "Test Lua"
 	files     { "../testLua/**.cs" }
 	vpaths { ["*"] = "../testLua" }
 	targetdir "../bin"
-	links     { "System", "Lua#"}
+	links     { "System", "LuaSharp"}
 	namespace("luaTest")

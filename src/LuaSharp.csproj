@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="../bin/x64/liblua5.4.so">
+            <Pack>true</Pack>
+            <PackagePath>runtimes/linux-x64/native/</PackagePath>
+        </Content>
+         <Content Include="../bin/x64/lua">
+            <Pack>true</Pack>
+            <PackagePath>runtimes/linux-x64/native/</PackagePath>
+        </Content>
+         <Content Include="../bin/x64/luac">
+            <Pack>true</Pack>
+            <PackagePath>runtimes/linux-x64/native/</PackagePath>
+        </Content>
+    </ItemGroup>
+
+</Project>

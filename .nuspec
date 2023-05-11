@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package  xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+    <metadata>    
+        <id>LuaSharp</id>
+        <version>1.0.0</version>
+        <title>Lua bindings for C# using the native the Lua Library</title>
+        <authors>Bob Holcomb</authors>
+        <owners>BHolcomb</owners>
+        <projectUrl>https://github.com/bholcomb/luaSharp</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Lua 5.4 bindings for C# that use an unmodified version of the Lua library</description>
+        <releaseNotes>Initial release</releaseNotes>
+        <copyright>Copyright 2023</copyright>
+        <summary>Lua bindings for C#.  Uses wrapper around native lua library with higher level API.</summary>
+        <tags>scripting, lua</tags>
+        <readme>README.md</readme>
+        <license type="expression">MIT</license>
+    </metadata>
+    <files>
+        <file src="README.md"/>
+        <file src="LICENSE.txt"/>
+        <file src="src/bin/Release/net7.0/LuaSharp.dll" target="lib/net7.0" />
+        <file src="src/bin/Release/net7.0/LuaSharp.deps.json" target="lib/net7.0" />
+        <file src="bin/x64/liblua5.4.so" target="runtimes/linux-x64/native/liblua5.4.so" />
+        <file src="bin/x64/lua" target="runtimes/linux-x64/native/lua" />
+        <file src="bin/x64/luac" target="runtimes/linux-x64/native/luac" />
+    </files>
+</package>

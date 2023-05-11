@@ -1,6 +1,5 @@
 using System;
 
-
 namespace Lua
 {
    public class LuaAutoStackCleaner: IDisposable

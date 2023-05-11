@@ -24,18 +24,21 @@ namespace luaTest
                     quit = true;
                     continue;
                 }
-
-                if (line == "stackdump")
+                else if(line == "stackdump")
                 {
                     theLuaVm.stackDump();
                 }
 
-                var result = theLuaVm.doString(line);
-
-                if (LuaThreadStatus.LUA_ERRSYNTAX == (LuaThreadStatus)result)
+                else
                 {
-                    System.Console.WriteLine("Lua Error");
+                    var result = theLuaVm.doString(line);
+                    if (LuaThreadStatus.LUA_ERRSYNTAX == (LuaThreadStatus)result)
+                    {
+                        System.Console.WriteLine("Lua Error");
+                    }
                 }
+
+
             }
 
             theLuaVm.close();
