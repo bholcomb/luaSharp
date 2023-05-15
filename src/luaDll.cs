@@ -136,33 +136,22 @@ namespace Lua
         }
 
         static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
-        {
-            string platformDependentName = libraryName switch{
-               Constants.LibraryName => Environment.OSVersion.Platform switch
-               {
-                  PlatformID.Win32NT => Constants.WindowsLibraryName,
-                  PlatformID.Unix => Constants.LinuxLibraryName,
-                  PlatformID.MacOSX => Constants.MacOsLibraryName,
-                  _ => Constants.LinuxLibraryName,
-               },
-               _ => libraryName,
-            };
-            
+        {          
             string baseDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string libraryDirectory = Path.Combine(baseDirectory, "runtimes");
             string libraryPath = "";
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-               libraryPath = Path.Combine(libraryDirectory, "win-x64", "native", platformDependentName);
+               libraryPath = Path.Combine(libraryDirectory, "win-x64", "native", Constants.WindowsLibraryName);
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-               libraryPath = Path.Combine(libraryDirectory, "linux-x64", "native", platformDependentName);
+               libraryPath = Path.Combine(libraryDirectory, "linux-x64", "native", Constants.LinuxLibraryName);
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-               libraryPath = Path.Combine(libraryDirectory, "osx-x64", "native", platformDependentName);
+               libraryPath = Path.Combine(libraryDirectory, "osx-x64", "native", Constants.MacOsLibraryName);
             }
 
             IntPtr handle;
