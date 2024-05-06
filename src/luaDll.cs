@@ -137,7 +137,8 @@ namespace Lua
 
         static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
         {          
-            string baseDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            //string baseDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string libraryDirectory = Path.Combine(baseDirectory, "runtimes");
             string libraryPath = "";
 
@@ -1221,13 +1222,13 @@ namespace Lua
         }
 
 
-        //TODO: 
+        // TODO: 
 
-        //Generic Buffer manipulation
-        //File handles for IO library
-        //compatibility with old module system
+        // Generic Buffer manipulation
+        // File handles for IO library
+        // compatibility with old module system
         // "Abstraction Layer" for basic report of messages and errors
-        //Compatibility with deprecated conversions
+        // Compatibility with deprecated conversions
 
         #endregion
     }
